@@ -1,0 +1,13 @@
+aiogram==3.13.0
+Django==5.1.1
+django-debug-toolbar==4.4.6
+django-unfold==0.43.0
+googletrans==3.1.0a0
+polib==1.2.0
+psycopg2-binary==2.9.10
+pydantic==2.8.2
+pydantic_core==2.20.1
+python-dotenv==1.0.1
+uvicorn==0.30.6
+whitenoise==6.8.2
+gunicorn==21.2.0

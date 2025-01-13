@@ -1,4 +1,4 @@
-name: Baysan Continuous Delivery
+name: FinanceBuddy Continuous Delivery
 on:
   push:
     branches: [ "dev" ]
@@ -6,21 +6,19 @@ jobs:
   deploy:
     runs-on: self-hosted
     steps:
-        - uses: actions/checkout@v3
-        
-        - name: Build Updated Docker Compose Environment
-          run: | 
-                cp /opt/configs/.financebuddy_env .env.dev
-                sudo docker-compose --env-file .env.dev -f docker-compose-dev.yml build
-        - name: Migrate
-          run: |
-                cp /opt/configs/.financebuddy_env .env.dev
-                sudo docker-compose --env-file .env.dev -f docker-compose-dev.yml run --rm web python manage.py migrate
-        - name: Run Updated Docker Compose Environment
-          run: |
-              cp /opt/configs/.financebuddy_env .env.dev
-              sudo docker-compose --env-file .env.dev -f docker-compose-dev.yml up -d
-        # - name: Remove Unused Docker Compose Environment
-        #   run: |
-        #         docker container prune -f
-        #         docker image prune -f
+      - uses: actions/checkout@v3
+      
+      - name: Build Updated Docker Compose Environment
+        run: | 
+          cp /opt/configs/.financebuddy_env .env.dev
+          sudo -E docker-compose --env-file .env.dev -f docker-compose-dev.yml build
+      
+      - name: Migrate
+        run: |
+          cp /opt/configs/.financebuddy_env .env.dev
+          sudo -E docker-compose --env-file .env.dev -f docker-compose-dev.yml run --rm web python manage.py migrate
+      
+      - name: Run Updated Docker Compose Environment
+        run: |
+          cp /opt/configs/.financebuddy_env .env.dev
+          sudo -E docker-compose --env-file .env.dev -f docker-compose-dev.yml up -d

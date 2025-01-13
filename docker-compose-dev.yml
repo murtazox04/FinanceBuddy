@@ -9,7 +9,7 @@ services:
       - DJANGO_SETTINGS_MODULE=core.settings.development
     volumes:
       - .:/app
-      - /secrets/.financebuddy_env:/app/.env
+      - /root/secrets/.financebuddy_env:/app/.env
     restart: unless-stopped
     networks:
       - app-network

@@ -40,7 +40,7 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          echo $(pwd)
+          sudo echo $(pwd)
           sudo mkdir -p /projects/FinanceBuddy
           cd /projects/FinanceBuddy || exit 1
           sudo git fetch origin dev && sudo git reset --hard origin/dev

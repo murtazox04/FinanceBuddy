@@ -4,7 +4,7 @@ on:
     branches: [ "dev" ]
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: [self-hosted, docker]
     steps:
       - uses: actions/checkout@v3
       

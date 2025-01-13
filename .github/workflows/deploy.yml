@@ -1,51 +1,20 @@
-name: CI/CD Pipeline for Finance Buddy
-
+name: Baysan Continuous Delivery
 on:
   push:
-    branches: [ dev ]
-  pull_request:
-    branches: [ dev ]
-
+    branches: [ "dev" ]
 jobs:
-  test-and-deploy:
+  deploy:
     runs-on: self-hosted
-
     steps:
-    - name: Checkout source code
-      uses: actions/checkout@v3
-    
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+        - uses: actions/checkout@v3
         
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    # - name: Run tests
-    #   env:
-    #     SECRET_KEY: ${{ secrets.SECRET_KEY }}
-    #     DEBUG: 'False'
-    #     TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-    #     WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-    #   run: |
-
-    #     python manage.py test
-
-    - name: Deploy to Production Server
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          sudo echo "Hello World!"
-          sudo mkdir -p /projects/FinanceBuddy
-          cd /projects/FinanceBuddy || exit 1
-          sudo git fetch origin dev && sudo git reset --hard origin/dev
-          cp docker-compose-dev.yml docker-compose.yml
-          sudo docker-compose || true
-          sudo docker-compose up -d --build
-          sudo systemctl reload nginx
-          sudo docker image prune -f
+        - name: Build Updated Docker Compose Environment
+          run: docker-compose --env-file .env.dev -f docker-compose-dev.yml build
+        - name: Migrate
+          run: docker-compose --env-file .env.dev -f docker-compose-dev.yml run --rm web python manage.py migrate
+        - name: Run Updated Docker Compose Environment
+          run: docker-compose --env-file .env.dev -f docker-compose-dev.yml up -d
+        # - name: Remove Unused Docker Compose Environment
+        #   run: |
+        #         docker container prune -f
+        #         docker image prune -f

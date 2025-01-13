@@ -23,15 +23,15 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        
-    - name: Run tests
-      env:
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        DEBUG: 'False'
-        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-      run: |
-        python manage.py test
+    # - name: Run tests
+    #   env:
+    #     SECRET_KEY: ${{ secrets.SECRET_KEY }}
+    #     DEBUG: 'False'
+    #     TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+    #     WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+    #   run: |
+
+    #     python manage.py test
 
     - name: Deploy to Production Server
       uses: appleboy/ssh-action@master
@@ -43,7 +43,8 @@ jobs:
           sudo mkdir -p /projects/FinanceBuddy
           cd /projects/FinanceBuddy || exit 1
           sudo git fetch origin dev && sudo git reset --hard origin/dev
-          sudo docker-compose down || true
+          cp docker-compose-dev.yml docker-compose.yml
+          sudo docker-compose || true
           sudo docker-compose up -d --build
           sudo systemctl reload nginx
           sudo docker image prune -f

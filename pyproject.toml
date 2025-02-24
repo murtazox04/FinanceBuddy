@@ -1,0 +1,17 @@
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = ["E", "F", "W", "I", "B", "Q", "C4", "RUF"]
+ignore = ["E501", "F401"]
+
+[tool.mypy]
+strict = true
+check_untyped_defs = true
+disallow_any_generics = true
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.pylint.messages_control]
+disable = ["unused-import"]

@@ -4,13 +4,12 @@ import logging
 import subprocess
 import re
 from pathlib import Path
-from typing import List, Set
-from dataclasses import dataclass
+from typing import List
+from dataclasses import dataclass, field
 from googletrans import Translator
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -18,13 +17,13 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TranslationConfig:
     """Configuration for translation process"""
-    languages: List[str] = None
-    source_lang: str = 'en'
-    domain: str = 'messages'
-    locales_dir: str = 'locales'
+
+    languages: List[str] = field(default_factory=lambda: ["en", "ru", "uz"])
+    source_lang: str = "en"
+    domain: str = "messages"
+    locales_dir: str = "locales"
 
     def __post_init__(self):
-        self.languages = self.languages or ['en', 'ru', 'uz']
         self.locales_path = Path(self.locales_dir)
 
 
@@ -36,16 +35,16 @@ class TranslationManager:
 
         # Patterns to identify and protect format strings
         self.format_patterns = [
-            r'\{[^}]+\}',  # Named and unnamed format placeholders
-            r'%\([^)]+\)[sd]',  # Old-style named placeholders
-            r'%[sd]',  # Old-style unnamed placeholders
-            r'\{.*?:.+?\}',  # Format specifiers like {:.1f}
+            r"\{[^}]+\}",  # Named and unnamed format placeholders
+            r"%\([^)]+\)[sd]",  # Old-style named placeholders
+            r"%[sd]",  # Old-style unnamed placeholders
+            r"\{.*?:.+?\}",  # Format specifiers like {:.1f}
         ]
 
         # Language detection overrides
         self.lang_overrides = {
-            'ru': 'ru',  # Ensure Russian text is detected as Russian
-            'uz': 'uz'   # Ensure Uzbek text is detected as Uzbek
+            "ru": "ru",  # Ensure Russian text is detected as Russian
+            "uz": "uz",  # Ensure Uzbek text is detected as Uzbek
         }
 
     def _ensure_locales_dir(self) -> None:
@@ -60,7 +59,7 @@ class TranslationManager:
         for pattern in self.format_patterns:
             matches = re.finditer(pattern, modified_text)
             for i, match in enumerate(matches):
-                placeholder = f'__FORMAT_{i}__'
+                placeholder = f"__FORMAT_{i}__"
                 format_strings.append(match.group(0))
                 modified_text = modified_text.replace(match.group(0), placeholder)
 
@@ -70,26 +69,26 @@ class TranslationManager:
         """Restore format strings from placeholders"""
         result = text
         for i, format_string in enumerate(format_strings):
-            result = result.replace(f'__FORMAT_{i}__', format_string)
+            result = result.replace(f"__FORMAT_{i}__", format_string)
         return result
 
     def _detect_language(self, text: str) -> str:
         """Detect the language of the text and apply overrides"""
         try:
-            detected = self.translator.detect(text).lang
+            detection_result = self.translator.detect(text)
+            if isinstance(detection_result, list):
+                detected = detection_result[0].lang if detection_result else "en"
+            else:
+                detected = detection_result.lang
             return self.lang_overrides.get(detected, detected)
         except:
-            return None
+            return "en"
 
     def _run_command(self, command: str) -> bool:
         """Execute a shell command and handle errors"""
         try:
             process = subprocess.run(
-                command,
-                shell=True,
-                check=True,
-                capture_output=True,
-                text=True
+                command, shell=True, check=True, capture_output=True, text=True
             )
             return True
         except subprocess.CalledProcessError as e:
@@ -128,7 +127,9 @@ class TranslationManager:
 
     def compile_translations(self) -> bool:
         """Compile translations to .mo files"""
-        command = f"pybabel compile -d {self.config.locales_dir} -D {self.config.domain}"
+        command = (
+            f"pybabel compile -d {self.config.locales_dir} -D {self.config.domain}"
+        )
         return self._run_command(command)
 
     async def translate_po_file(self, lang: str) -> None:
@@ -136,45 +137,79 @@ class TranslationManager:
         if lang == self.config.source_lang:
             return
 
-        po_file = self.config.locales_path / lang / 'LC_MESSAGES' / f'{self.config.domain}.po'
+        po_file = (
+            self.config.locales_path / lang / "LC_MESSAGES" / f"{self.config.domain}.po"
+        )
         if not po_file.exists():
             logger.error(f"PO file not found: {po_file}")
             return
 
         try:
-            dest_lang = 'zh-cn' if lang == 'zh' else lang
+            dest_lang = "zh-cn" if lang == "zh" else lang
             po = polib.pofile(str(po_file))
 
             for entry in po:
                 if not entry.msgstr and entry.msgid:
                     try:
                         # Extract format strings before translation
-                        modified_text, format_strings = self._extract_format_strings(entry.msgid)
+                        modified_text, format_strings = self._extract_format_strings(
+                            entry.msgid
+                        )
 
                         # Detect source language to ensure correct translation path
                         detected_lang = self._detect_language(modified_text)
                         if detected_lang and detected_lang != self.config.source_lang:
                             # Two-step translation if needed
-                            intermediate = self.translator.translate(
+                            intermediate_result = self.translator.translate(
                                 modified_text,
                                 dest=self.config.source_lang,
-                                src=detected_lang
-                            ).text
-                            translation = self.translator.translate(
+                                src=detected_lang,
+                            )
+                            if isinstance(intermediate_result, list):
+                                intermediate = (
+                                    intermediate_result[0].text
+                                    if intermediate_result
+                                    else modified_text
+                                )
+                            else:
+                                intermediate = intermediate_result.text
+
+                            translation_result = self.translator.translate(
                                 intermediate,
                                 dest=dest_lang,
-                                src=self.config.source_lang
-                            ).text
+                                src=self.config.source_lang,
+                            )
+
+                            if isinstance(translation_result, list):
+                                translation = (
+                                    translation_result[0].text
+                                    if translation_result
+                                    else intermediate
+                                )
+                            else:
+                                translation = translation_result.text
                         else:
                             # Direct translation
-                            translation = self.translator.translate(
+                            translation_result = self.translator.translate(
                                 modified_text,
                                 dest=dest_lang,
-                                src=self.config.source_lang
-                            ).text
+                                src=self.config.source_lang,
+                            )
+
+                            # Handle if result is a list
+                            if isinstance(translation_result, list):
+                                translation = (
+                                    translation_result[0].text
+                                    if translation_result
+                                    else modified_text
+                                )
+                            else:
+                                translation = translation_result.text
 
                         # Restore format strings
-                        entry.msgstr = self._restore_format_strings(translation, format_strings)
+                        entry.msgstr = self._restore_format_strings(
+                            translation, format_strings
+                        )
 
                     except Exception as e:
                         logger.error(f"Translation error for '{entry.msgid}': {str(e)}")
@@ -194,7 +229,12 @@ class TranslationManager:
 
             for lang in self.config.languages:
                 logger.info(f"Processing language: {lang}")
-                po_path = self.config.locales_path / lang / 'LC_MESSAGES' / f'{self.config.domain}.po'
+                po_path = (
+                    self.config.locales_path
+                    / lang
+                    / "LC_MESSAGES"
+                    / f"{self.config.domain}.po"
+                )
 
                 if not po_path.parent.exists():
                     if not self.init_language(lang):
@@ -216,10 +256,10 @@ class TranslationManager:
 
 async def main():
     config = TranslationConfig(
-        languages=['en', 'ru', 'uz', 'zh'],
-        source_lang='en',
-        domain='messages',
-        locales_dir='locales'
+        languages=["en", "ru", "uz", "zh"],
+        source_lang="en",
+        domain="messages",
+        locales_dir="locales",
     )
 
     manager = TranslationManager(config)

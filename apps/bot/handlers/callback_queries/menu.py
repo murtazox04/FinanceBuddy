@@ -11,7 +11,10 @@ from apps.bot.states.main_menu import MainMenu as MainMenuState
 from apps.bot.callbacks.menu import Expense as ExpenseCallback
 from apps.bot.callbacks.stats import Statistics as StatisticsCallback
 from apps.bot.keyboards.inline import (
-    expense_main_category_keyboard, expense_catategory_keyboard, expense_search_keyboard, statistics_keyboard
+    expense_main_category_keyboard,
+    expense_catategory_keyboard,
+    expense_search_keyboard,
+    statistics_keyboard,
 )
 from apps.finance.helpers import create_category
 
@@ -49,20 +52,26 @@ async def statistics_menu(call: CallbackQuery, callback_data: StatisticsCallback
         "week": lambda t: t - timedelta(days=t.weekday()),
         "month": lambda t: t.replace(day=1),
         "year": lambda t: t.replace(month=1, day=1),
-        "all": lambda _: None
+        "all": lambda _: None,
     }
     if callback_data.statistics_type not in periods:
         await call.answer("Noto'g'ri statistika turi.")
         return
     start_date = periods[callback_data.statistics_type](now())
-    base_filter = {'user_id': call.from_user.id}
+    base_filter = {"user_id": call.from_user.id}
     if start_date:
-        base_filter['created_at__gte'] = start_date
+        base_filter["created_at__gte"] = start_date
     expense_total = await sync_to_async(
-        lambda: Expense.objects.filter(**base_filter).aggregate(total=Sum('amount'))['total'] or 0
+        lambda: Expense.objects.filter(**base_filter).aggregate(total=Sum("amount"))[
+            "total"
+        ]
+        or 0
     )()
     income_total = await sync_to_async(
-        lambda: Income.objects.filter(**base_filter).aggregate(total=Sum('amount'))['total'] or 0
+        lambda: Income.objects.filter(**base_filter).aggregate(total=Sum("amount"))[
+            "total"
+        ]
+        or 0
     )()
     await call.message.edit_text(
         f"Statistika: {callback_data.statistics_type}\n\n"
@@ -73,14 +82,18 @@ async def statistics_menu(call: CallbackQuery, callback_data: StatisticsCallback
 
 
 @router.callback_query(ExpenseCallback.filter())
-async def expense_menu(call: CallbackQuery, callback_data: ExpenseCallback, state: FSMContext):
+async def expense_menu(
+    call: CallbackQuery, callback_data: ExpenseCallback, state: FSMContext
+):
     user_id = call.from_user.id
     menu = callback_data.category_type
     category_id = callback_data.category_id
     markup = None
     if not menu in ["back", "add_category"]:
         if menu in ["main", "subcategories"]:
-            markup = await expense_main_category_keyboard(menu, category_id, user_id, category_id if category_id else None)
+            markup = await expense_main_category_keyboard(
+                menu, category_id, user_id, category_id if category_id else None
+            )
         elif menu == "search":
             search_text = callback_data.get("search_text", "")
             markup = expense_search_keyboard(search_text)

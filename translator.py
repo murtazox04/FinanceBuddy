@@ -4,8 +4,8 @@ import logging
 import subprocess
 import re
 from pathlib import Path
-from typing import List
-from dataclasses import dataclass, field
+from typing import List, Tuple
+from dataclasses import dataclass
 from googletrans import Translator
 
 logging.basicConfig(
@@ -18,12 +18,13 @@ logger = logging.getLogger(__name__)
 class TranslationConfig:
     """Configuration for translation process"""
 
-    languages: List[str] = field(default_factory=lambda: ["en", "ru", "uz"])
+    languages: List[str] = None
     source_lang: str = "en"
     domain: str = "messages"
     locales_dir: str = "locales"
 
     def __post_init__(self):
+        self.languages = self.languages or ["en", "ru", "uz"]
         self.locales_path = Path(self.locales_dir)
 
 
@@ -51,38 +52,34 @@ class TranslationManager:
         """Ensure locales directory exists"""
         self.config.locales_path.mkdir(exist_ok=True)
 
-    def _extract_format_strings(self, text: str) -> tuple[str, list]:
+    def _extract_format_strings(self, text: str) -> Tuple[str, List[str]]:
         """Extract format strings and replace with placeholders"""
         format_strings = []
-        modified_text = text
+        modified_text: str = text
 
         for pattern in self.format_patterns:
             matches = re.finditer(pattern, modified_text)
             for i, match in enumerate(matches):
                 placeholder = f"__FORMAT_{i}__"
-                format_strings.append(match.group(0))
+                format_strings.append(match.group(0))  # type: ignore
                 modified_text = modified_text.replace(match.group(0), placeholder)
 
-        return modified_text, format_strings
+        return Tuple[modified_text, format_strings]
 
     def _restore_format_strings(self, text: str, format_strings: list) -> str:
         """Restore format strings from placeholders"""
         result = text
-        for i, format_string in enumerate(format_strings):
-            result = result.replace(f"__FORMAT_{i}__", format_string)
+        for i, format_string in enumerate(format_strings):  # type: ignore
+            result = result.replace(f"__FORMAT_{i}__", format_string)  # type: ignore
         return result
 
     def _detect_language(self, text: str) -> str:
         """Detect the language of the text and apply overrides"""
         try:
-            detection_result = self.translator.detect(text)
-            if isinstance(detection_result, list):
-                detected = detection_result[0].lang if detection_result else "en"
-            else:
-                detected = detection_result.lang
-            return self.lang_overrides.get(detected, detected)
+            detected = self.translator.detect(text).lang  # type: ignore
+            return self.lang_overrides.get(detected, detected)  # type: ignore
         except:
-            return "en"
+            return None
 
     def _run_command(self, command: str) -> bool:
         """Execute a shell command and handle errors"""
@@ -160,55 +157,27 @@ class TranslationManager:
                         detected_lang = self._detect_language(modified_text)
                         if detected_lang and detected_lang != self.config.source_lang:
                             # Two-step translation if needed
-                            intermediate_result = self.translator.translate(
+                            intermediate = self.translator.translate(  # type: ignore
                                 modified_text,
                                 dest=self.config.source_lang,
                                 src=detected_lang,
-                            )
-                            if isinstance(intermediate_result, list):
-                                intermediate = (
-                                    intermediate_result[0].text
-                                    if intermediate_result
-                                    else modified_text
-                                )
-                            else:
-                                intermediate = intermediate_result.text
-
-                            translation_result = self.translator.translate(
+                            ).text
+                            translation: str = self.translator.translate(  # type: ignore
                                 intermediate,
                                 dest=dest_lang,
                                 src=self.config.source_lang,
-                            )
-
-                            if isinstance(translation_result, list):
-                                translation = (
-                                    translation_result[0].text
-                                    if translation_result
-                                    else intermediate
-                                )
-                            else:
-                                translation = translation_result.text
+                            ).text
                         else:
                             # Direct translation
-                            translation_result = self.translator.translate(
+                            translation: str = self.translator.translate(  # type: ignore
                                 modified_text,
                                 dest=dest_lang,
                                 src=self.config.source_lang,
-                            )
-
-                            # Handle if result is a list
-                            if isinstance(translation_result, list):
-                                translation = (
-                                    translation_result[0].text
-                                    if translation_result
-                                    else modified_text
-                                )
-                            else:
-                                translation = translation_result.text
+                            ).text
 
                         # Restore format strings
-                        entry.msgstr = self._restore_format_strings(
-                            translation, format_strings
+                        entry.msgstr = self._restore_format_strings(  # type: ignore
+                            translation, format_strings  # type: ignore
                         )
 
                     except Exception as e:

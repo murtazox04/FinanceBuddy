@@ -1,4 +1,4 @@
-from aiogram import types, Router, F
+from aiogram import types, Router
 from aiogram.types import CallbackQuery
 from aiogram.fsm.context import FSMContext
 from asgiref.sync import sync_to_async

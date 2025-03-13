@@ -5,7 +5,7 @@ from .base import *
 
 RUNTIME = "test"
 
-DATABASES = {
+DATABASES: dict[str, Any] = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres",

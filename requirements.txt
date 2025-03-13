@@ -1,0 +1,28 @@
+# Core Django
+Django==5.1.7
+
+# Async Web Servers
+gunicorn==23.0.0
+uvicorn==0.34.0
+
+# Telegram Bot
+aiogram==3.13.0
+
+# Database
+psycopg2-binary==2.9.10
+
+# Additional Utilities
+python-dotenv==1.0.1
+whitenoise==6.9.0
+
+# Development Tools
+django-debug-toolbar==5.0.1
+
+# Internationalization
+polib==1.2.0
+
+# Optional: Translation
+googletrans==3.1.0a0
+
+# Admin Interface
+django-unfold==0.51.0
